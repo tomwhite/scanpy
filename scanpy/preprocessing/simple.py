@@ -3,7 +3,6 @@
 Compositions of these functions are found in sc.preprocess.recipes.
 """
 
-import numpy as np
 import scipy as sp
 import warnings
 from scipy.sparse import issparse
@@ -14,7 +13,33 @@ from .. import settings as sett
 from .. import logging as logg
 from ..utils import sanitize_anndata
 
+# install dask if available
+try:
+    import dask.array as da
+except ImportError:
+    da = None
+
+# install numpy_spark (which wraps numpy), or fall back to plain numpy
+try:
+    import numpy_spark as np
+except ImportError:
+    import numpy as np
+
 N_PCS = 50  # default number of PCs
+
+
+def materialize_as_ndarray(a):
+    if type(a) in (list, tuple):
+        if da is not None and any(isinstance(arr, da.Array) for arr in a):
+            return da.compute(*a, sync=True)
+        elif hasattr(np, 'asarray'): # only in numpy_spark
+            return tuple(np.asarray(arr) for arr in a)
+    else:
+        if da is not None and isinstance(a, da.Array):
+            return a.compute()
+        elif hasattr(np, 'asarray'): # only in numpy_spark
+            return np.asarray(a)
+    return a
 
 
 def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
@@ -96,7 +121,7 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
         raise ValueError('Provide one of min_counts, min_genes, max_counts or max_genes.')
     if isinstance(data, AnnData):
         adata = data.copy() if copy else data
-        cell_subset, number = filter_cells(adata.X, min_counts, min_genes, max_counts, max_genes)
+        cell_subset, number = materialize_as_ndarray(filter_cells(adata.X, min_counts, min_genes, max_counts, max_genes))
         if min_genes is None and max_genes is None: adata.obs['n_counts'] = number
         else: adata.obs['n_genes'] = number
         adata._inplace_subset_obs(cell_subset)
@@ -174,9 +199,9 @@ def filter_genes(data, min_counts=None, min_cells=None, max_counts=None,
 
     if isinstance(data, AnnData):
         adata = data.copy() if copy else data
-        gene_subset, number = filter_genes(adata.X, min_cells=min_cells,
+        gene_subset, number = materialize_as_ndarray(filter_genes(adata.X, min_cells=min_cells,
                                            min_counts=min_counts, max_cells=max_cells,
-                                           max_counts=max_counts)
+                                           max_counts=max_counts))
         if min_cells is None and max_cells is None:
             adata.var['n_counts'] = number
         else:
@@ -297,7 +322,7 @@ def filter_genes_dispersion(data,
     logg.msg('extracting highly variable genes',
               r=True, v=4)
     X = data  # no copy necessary, X remains unchanged in the following
-    mean, var = _get_mean_var(X)
+    mean, var = materialize_as_ndarray(_get_mean_var(X))
     # now actually compute the dispersion
     mean[mean == 0] = 1e-12  # set entries equal to zero to small value
     dispersion = var / mean
@@ -623,9 +648,10 @@ def normalize_per_cell(data, counts_per_cell_after=None, counts_per_cell=None,
         logg.msg('normalizing by total count per cell', r=True)
         adata = data.copy() if copy else data
         cell_subset, counts_per_cell = filter_cells(adata.X, min_counts=1)
-        adata.obs[key_n_counts] = counts_per_cell
-        adata._inplace_subset_obs(cell_subset)
-        normalize_per_cell(adata.X, counts_per_cell_after,
+        cell_subset_np, counts_per_cell_np = materialize_as_ndarray([cell_subset, counts_per_cell])
+        adata.obs[key_n_counts] = counts_per_cell_np
+        adata._inplace_subset_obs(cell_subset_np)
+        adata.X = normalize_per_cell(adata.X, counts_per_cell_after,
                            counts_per_cell=counts_per_cell[cell_subset])
         logg.msg('    finished', t=True, end=': ')
         logg.msg('normalized adata.X and added', no_indent=True)
@@ -643,9 +669,9 @@ def normalize_per_cell(data, counts_per_cell_after=None, counts_per_cell=None,
     if counts_per_cell_after is None:
         counts_per_cell_after = np.median(counts_per_cell)
     counts_per_cell /= counts_per_cell_after
-    if not issparse(X): X /= counts_per_cell[:, np.newaxis]
+    if not issparse(X): X /= materialize_as_ndarray(counts_per_cell[:, np.newaxis])
     else: sparsefuncs.inplace_row_scale(X, 1/counts_per_cell)
-    return X if copy else None
+    return X
 
 
 def normalize_per_cell_weinreb16_deprecated(X, max_fraction=1,
@@ -846,7 +872,7 @@ def scale(data, zero_center=True, max_value=None, copy=False):
                 '... scale_data: as `zero_center=True`, sparse input is '
                 'densified and may lead to large memory consumption')
             adata.X = adata.X.toarray()
-        scale(adata.X, zero_center=zero_center, max_value=max_value, copy=False)
+        adata.X = scale(adata.X, zero_center=zero_center, max_value=max_value, copy=False)
         return adata if copy else None
     X = data.copy() if copy else data  # proceed with the data matrix
     zero_center = zero_center if zero_center is not None else False if issparse(X) else True
@@ -862,9 +888,9 @@ def scale(data, zero_center=True, max_value=None, copy=False):
                  v=4)
         X = X.toarray()
         copy = True
-    _scale(X, zero_center)
+    X = _scale(X, zero_center)
     if max_value is not None: X[X > max_value] = max_value
-    return X if copy else None
+    return X
 
 
 def subsample(data, fraction, random_state=0, copy=False):
@@ -1038,8 +1064,7 @@ def _scale(X, zero_center=True):
             if zero_center: raise ValueError('Cannot zero-center sparse matrix.')
             sparsefuncs.inplace_column_scale(X, 1/scale)
         else:
-            X -= mean
-            X /= scale
+            return (X - mean) / scale
     else:
         from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler(with_mean=zero_center, copy=False).partial_fit(X)
