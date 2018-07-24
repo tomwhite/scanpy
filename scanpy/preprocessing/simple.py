@@ -4,7 +4,7 @@ Compositions of these functions are found in sc.preprocess.recipes.
 """
 
 import dask.array as da
-import numpy as np
+import numpy_spark as np
 import scipy as sp
 import warnings
 from scipy.sparse import issparse
@@ -19,18 +19,11 @@ N_PCS = 50  # default number of PCs
 
 
 def compute_if_dask_array0(arr):
-    if isinstance(arr, da.Array):
-        return arr.compute()
-    else:
-        return arr
+    return np.asarray(arr)
 
 
 def compute_if_dask_array(arrays):
-    if any(isinstance(arr, da.Array) for arr in arrays):
-        x = da.compute(*arrays, sync=True)
-        return x
-    else:
-        return arrays
+    return [np.asarray(arr) for arr in arrays]
 
 
 def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
