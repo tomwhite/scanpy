@@ -182,7 +182,9 @@ def compute_neighbors_umap(
         metric=metric,
         metric_kwds=metric_kwds,
         algorithm='threaded',
-        threads=n_cores
+        threads=n_cores,
+        chunk_size=X.shape[0]//n_cores,
+        verbose=True
     )._neighbor_graph
 
 
