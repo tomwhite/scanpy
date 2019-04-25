@@ -175,6 +175,7 @@ def compute_neighbors_umap(
     import multiprocessing
     n_cores = multiprocessing.cpu_count()
     print("type(X)", type(X))
+    print("X.dtype", X.dtype)
     #np.save("/tmp/X", X)
     return NNDescent(
         X,
