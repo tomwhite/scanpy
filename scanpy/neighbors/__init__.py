@@ -174,6 +174,7 @@ def compute_neighbors_umap(
     from pynndescent import NNDescent
     import multiprocessing
     n_cores = multiprocessing.cpu_count()
+    np.save("/tmp/X", X)
     return NNDescent(
         X,
         n_neighbors=n_neighbors,
