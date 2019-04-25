@@ -177,6 +177,7 @@ def compute_neighbors_umap(
     return NNDescent(
         X,
         n_neighbors=n_neighbors,
+        tree_init=False,
         random_state=random_state,
         metric=metric,
         metric_kwds=metric_kwds,
