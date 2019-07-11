@@ -37,7 +37,7 @@ def time_dask():
     print("time to create matrix: ", t1-t0)
 
     Y = np.log1p(X)
-    X.compute(scheduler='threads', num_workers=8)
+    Y.compute(scheduler='threads', num_workers=8)
     t2 = time.time()
 
     print("time to call log1p: ", t2-t1)
@@ -105,6 +105,6 @@ if __name__ == '__main__':
     # time_numpy()
     # time_dask()
 
-    #time_sparse()
+    time_sparse()
     time_sparse_dask()
     # time_pydata_sparse_dask()
