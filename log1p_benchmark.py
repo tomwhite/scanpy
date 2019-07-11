@@ -21,7 +21,7 @@ def time_numpy():
     #print(X.nnz/(X.shape[0] * X.shape[1]))
 
     #Y = np.log1p(X.data, out=X.data)
-    Y = np.log1p(X, out=X)
+    Y = np.log1p(X)
     t2 = time.time()
 
     print("time to call log1p: ", t2-t1)
@@ -29,12 +29,14 @@ def time_numpy():
 def time_dask():
 
     t0 = time.time()
-    X = dask.array.random.random((100000, 3000), chunks=(10000, 3000))
+    #X = dask.array.random.random((100000, 3000), chunks=(10000, 3000))
+    X = np.random.rand(100000, 3000)
+    X = dask.array.from_array(X, chunks=(10000, 3000))
     t1 = time.time()
 
     print("time to create matrix: ", t1-t0)
 
-    np.log1p(X, out=X)
+    Y = np.log1p(X)
     X.compute(scheduler='threads', num_workers=8)
     t2 = time.time()
 
@@ -56,7 +58,7 @@ def time_sparse():
 
     #print(X.nnz/(X.shape[0] * X.shape[1]))
 
-    Y = np.log1p(X.data, out=X.data)
+    Y = np.log1p(X)
     t2 = time.time()
 
     print("time to call log1p: ", t2-t1)
@@ -71,11 +73,11 @@ def time_sparse_dask():
 
     print("time to create matrix: ", t1-t0)
 
-    np.log1p(X, out=X)
-    X.compute(scheduler='threads', num_workers=8)
+    Y = np.log1p(X)
+    Y.compute(scheduler='threads', num_workers=8)
     t2 = time.time()
 
-    print("time to call log1p: ", t2-t1)
+    print("time to call log1p: ", t2-t1, t1, t2)
 
 def time_pydata_sparse_dask():
 
@@ -103,6 +105,6 @@ if __name__ == '__main__':
     # time_numpy()
     # time_dask()
 
-    time_sparse()
+    #time_sparse()
     time_sparse_dask()
     # time_pydata_sparse_dask()
