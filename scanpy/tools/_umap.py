@@ -121,6 +121,7 @@ def umap(
     if hasattr(init_coords, "dtype"):
         init_coords = check_array(init_coords, dtype=np.float32, accept_sparse=False)
 
+    parallel = random_state is None
     random_state = check_random_state(random_state)
     n_epochs = 0 if maxiter is None else maxiter
     neigh_params = adata.uns['neighbors']['params']
@@ -142,6 +143,7 @@ def umap(
         random_state,
         neigh_params.get('metric', 'euclidean'),
         neigh_params.get('metric_kwds', {}),
+        parallel=parallel,
         verbose=settings.verbosity > 3,
     )
     adata.obsm['X_umap'] = X_umap  # annotate samples with UMAP coordinates
