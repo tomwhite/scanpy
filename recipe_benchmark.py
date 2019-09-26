@@ -21,6 +21,20 @@ def log1p(X):
     # TODO: try using out=X
     return np.log1p(X)
 
+def scale(X):
+    mean, var = _get_mean_var(X)
+    scale = np.sqrt(var)
+    X -= mean
+    scale[scale == 0] = 1e-12
+    X /= scale
+    return X
+
+def _get_mean_var(X):
+    mean = X.mean(axis=0)
+    mean_sq = np.multiply(X, X).mean(axis=0)
+    var = (mean_sq - mean ** 2) * (X.shape[0] / (X.shape[0] - 1))
+    return mean, var
+
 def time_numpy():
     print("time_numpy")
 
@@ -30,7 +44,9 @@ def time_numpy():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X)
-    Y = log1p(Y).sum() # call sum so we don't have to allocate output
+    Y = log1p(Y)
+    Y = scale(Y)
+    Y = Y.sum() # call sum so we don't have to allocate output
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
@@ -45,7 +61,9 @@ def time_dask():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X)
-    Y = log1p(Y).sum() # call sum so we don't have to allocate output
+    Y = log1p(Y)
+    Y = scale(Y)
+    Y = Y.sum() # call sum so we don't have to allocate output
     da.compute(Y, number_per_gene)
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
