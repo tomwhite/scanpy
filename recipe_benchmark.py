@@ -68,6 +68,40 @@ def time_dask():
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
+# def time_sparse():
+#     print("time_sparse")
+#
+#     t0 = time.time()
+#     X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
+#     #X = scipy.sparse.vstack([X] * 10)
+#     t1 = time.time()
+#     print("time to create matrix: ", t1-t0)
+#
+#     Y, number_per_gene = filter_genes(X)
+#     Y = log1p(Y)
+#     Y = scale(Y)
+#     Y = Y.sum() # call sum so we don't have to allocate output
+#     t2 = time.time()
+#     print("time to call filter_genes: ", t2-t1)
+#
+# def time_sparse_dask():
+#     print("time_sparse_dask")
+#
+#     t0 = time.time()
+#     X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
+#     #X = scipy.sparse.vstack([X] * 10)
+#     X = sparse_dask(X, chunks=(10000, X.shape[1]))
+#     t1 = time.time()
+#     print("time to create matrix: ", t1-t0)
+#
+#     Y, number_per_gene = filter_genes(X)
+#     Y = log1p(Y)
+#     Y = scale(Y)
+#     Y = Y.sum() # call sum so we don't have to allocate output
+#     da.compute(Y, number_per_gene)
+#     t2 = time.time()
+#     print("time to call filter_genes: ", t2-t1)
+
 if __name__ == '__main__':
     time_numpy()
 
@@ -76,4 +110,6 @@ if __name__ == '__main__':
     #client = Client(processes=False)
 
     time_dask()
+
+    #time_sparse()
 
