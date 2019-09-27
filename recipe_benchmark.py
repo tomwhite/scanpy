@@ -107,6 +107,7 @@ def time_sparse_dask():
     Y = Y.map_blocks(densify)
     Y = scale(Y)
     da.compute(Y, number_per_gene)
+    #Y.visualize(filename='sparse_dask.svg')
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
