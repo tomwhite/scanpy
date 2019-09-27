@@ -9,17 +9,22 @@ from scanpy.array import sparse_dask
 
 np.random.seed(42)
 
-def filter_genes(X):
-    min_number = 50000
+def filter_genes(X, min_number, sparse=False):
     number_per_gene = np.sum(X, axis=0)
+    if sparse:
+        number_per_gene = number_per_gene.A1
     gene_subset = number_per_gene >= min_number
-    #s = np.sum(~gene_subset)
+    s = np.sum(~gene_subset)
+    print("Filtered out", s)
     Y = X[:,gene_subset]
     return Y, number_per_gene # note we are returning "side data"
 
 def log1p(X):
     # TODO: try using out=X
     return np.log1p(X)
+
+def densify(X):
+    return X.toarray()
 
 def scale(X):
     mean, var = _get_mean_var(X)
@@ -43,7 +48,7 @@ def time_numpy():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X)
+    Y, number_per_gene = filter_genes(X, 50000)
     Y = log1p(Y)
     Y = scale(Y)
     Y = Y.sum() # call sum so we don't have to allocate output
@@ -60,7 +65,7 @@ def time_dask():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X)
+    Y, number_per_gene = filter_genes(X, 50000)
     Y = log1p(Y)
     Y = scale(Y)
     Y = Y.sum() # call sum so we don't have to allocate output
@@ -68,48 +73,49 @@ def time_dask():
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
-# def time_sparse():
-#     print("time_sparse")
-#
-#     t0 = time.time()
-#     X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
-#     #X = scipy.sparse.vstack([X] * 10)
-#     t1 = time.time()
-#     print("time to create matrix: ", t1-t0)
-#
-#     Y, number_per_gene = filter_genes(X)
-#     Y = log1p(Y)
-#     Y = scale(Y)
-#     Y = Y.sum() # call sum so we don't have to allocate output
-#     t2 = time.time()
-#     print("time to call filter_genes: ", t2-t1)
-#
-# def time_sparse_dask():
-#     print("time_sparse_dask")
-#
-#     t0 = time.time()
-#     X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
-#     #X = scipy.sparse.vstack([X] * 10)
-#     X = sparse_dask(X, chunks=(10000, X.shape[1]))
-#     t1 = time.time()
-#     print("time to create matrix: ", t1-t0)
-#
-#     Y, number_per_gene = filter_genes(X)
-#     Y = log1p(Y)
-#     Y = scale(Y)
-#     Y = Y.sum() # call sum so we don't have to allocate output
-#     da.compute(Y, number_per_gene)
-#     t2 = time.time()
-#     print("time to call filter_genes: ", t2-t1)
+def time_sparse():
+    print("time_sparse")
+
+    t0 = time.time()
+    X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
+    #X = scipy.sparse.vstack([X] * 10)
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    Y, number_per_gene = filter_genes(X, 5000, sparse=True)
+    Y = log1p(X)
+    Y = densify(Y)
+    Y = scale(Y)
+    Y = Y.sum() # call sum so we don't have to allocate output
+    t2 = time.time()
+    print("time to call filter_genes: ", t2-t1)
+
+def time_sparse_dask():
+    print("time_sparse_dask")
+
+    t0 = time.time()
+    X = random(100000, 3000, 0.10, format='csr') # gene expression matrix from 10x is 7% sparse, so this is similar
+    #X = scipy.sparse.vstack([X] * 10)
+    X = sparse_dask(X, chunks=(10000, X.shape[1]))
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    #Y, number_per_gene = filter_genes(X)
+    Y = log1p(X)
+    #Y = scale(Y)
+    Y = Y.sum() # call sum so we don't have to allocate output
+    da.compute(Y)
+    t2 = time.time()
+    print("time to call filter_genes: ", t2-t1)
 
 if __name__ == '__main__':
-    time_numpy()
+    #time_numpy()
 
     # For seeing how long tasks take
     #from dask.distributed import Client
     #client = Client(processes=False)
 
-    time_dask()
+    #time_dask()
 
-    #time_sparse()
+    time_sparse()
 
