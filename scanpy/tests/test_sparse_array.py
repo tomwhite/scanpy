@@ -63,6 +63,12 @@ class TestSparseArray:
     #     x = x + a
     #     assert_allclose(np.asarray(xs), x)
 
+    def test_broadcast_col_div(self, x, xs):
+        a = np.array([[1.0], [2.0], [3.0]])
+        xs = xs / a
+        x = x / a
+        assert_allclose(np.asarray(xs), x)
+
     # TODO: implement __eq__ properly?
     # def test_eq(self, x, xs):
     #     xs = xs == 0.0

@@ -74,6 +74,8 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
         # special case multiplication for sparse input, so it is elementwise, not matrix multiplication
         if ufunc.__name__ == 'multiply' and len(inputs) == 2 and _issparse(inputs[0]):
             result = inputs[0].multiply(inputs[1])
+        elif ufunc.__name__ == 'true_divide' and len(inputs) == 2 and _issparse(inputs[0]):
+            result = inputs[0] / inputs[1]
         else:
             result = getattr(ufunc, method)(*inputs, **kwargs)
 

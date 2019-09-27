@@ -119,6 +119,7 @@ def time_sparse_dask():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = Y.map_blocks(densify)
     Y = scale(Y)
@@ -171,6 +172,6 @@ if __name__ == '__main__':
     # So we see that Dask again can take advantage of cores.
 
     time_sparse()
-    #time_sparse_dask()
+    time_sparse_dask()
     #time_pydata_sparse_dask()
 
