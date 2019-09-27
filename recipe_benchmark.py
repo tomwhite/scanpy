@@ -2,6 +2,7 @@ import time
 from scipy.sparse import issparse, random
 import numpy as np
 import scipy.sparse
+from sklearn.utils import sparsefuncs
 
 import dask.array as da
 import dask.array.random
@@ -19,6 +20,18 @@ def filter_genes(X, min_number, sparse=False):
     print("gene_subset is a ", type(gene_subset))
     Y = X[:,gene_subset]
     return Y, number_per_gene # note we are returning "side data"
+
+def normalize(X, sparse=False):
+    counts_per_cell = X.sum(1)
+    counts = np.ravel(counts_per_cell)
+    after = np.median(counts[counts>0])
+    counts += (counts == 0)
+    counts /= after
+    if sparse:
+        sparsefuncs.inplace_row_scale(X, 1/counts)
+    else:
+        X /= counts[:, None]
+    return X
 
 def log1p(X):
     # TODO: try using out=X
@@ -52,6 +65,7 @@ def time_numpy():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 50000)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = scale(Y)
     Y = Y.sum() # call sum so we don't have to allocate output
@@ -69,6 +83,7 @@ def time_dask():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 50000)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = scale(Y)
     Y = Y.sum() # call sum so we don't have to allocate output
@@ -86,7 +101,8 @@ def time_sparse():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000, sparse=True)
-    Y = log1p(X)
+    Y = normalize(Y)
+    Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
     t2 = time.time()
@@ -155,6 +171,6 @@ if __name__ == '__main__':
     # So we see that Dask again can take advantage of cores.
 
     time_sparse()
-    time_sparse_dask()
+    #time_sparse_dask()
     #time_pydata_sparse_dask()
 
