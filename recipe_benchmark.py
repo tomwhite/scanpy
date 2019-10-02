@@ -2,6 +2,7 @@ import time
 from scipy.sparse import issparse, random
 import numpy as np
 import scipy.sparse
+from scipy.sparse import issparse
 from sklearn.utils import sparsefuncs
 
 import dask.array as da
@@ -75,6 +76,20 @@ def normalize(X, sparse=False):
         X /= counts[:, None]
     return X
 
+def normalize_sparse_dask(X):
+    # Do the equivalent of inplace_row_scale for SparseArray
+    counts_per_cell = X.sum(1)
+    counts = np.ravel(counts_per_cell)
+    after = np.median(counts[counts>0])
+    counts += (counts == 0)
+    counts /= after
+    def inplace_row_scale(X, block_info=None):
+        if block_info == '__block_info_dummy__':
+            return X
+        loc = block_info[0]['array-location'][0]
+        return SparseArray(sparsefuncs.inplace_row_scale(X.value, 1/counts[loc[0]:loc[1]]))
+    return X.map_blocks(inplace_row_scale, dtype=X.dtype)
+
 def log1p(X):
     # TODO: try using out=X
     return np.log1p(X)
@@ -105,6 +120,10 @@ def _get_mean_var(X, sparse=False):
 
 def load_data():
     return sc.read('ica_cord_blood_100K.h5ad')
+
+def report_block_info(X, block_info=None):
+    print(block_info, type(X))
+    return X
 
 def time_numpy():
     print("time_numpy")
@@ -171,7 +190,7 @@ def time_sparse_dask():
     Y, number_per_gene = filter_genes(X, 5000)
     Y = normalize(Y)
     Y = log1p(Y)
-    Y = Y.map_blocks(densify)
+    Y = Y.map_blocks(densify, dtype=Y.dtype)
     Y = scale(Y)
     da.compute(Y, number_per_gene)
     #Y.visualize(filename='sparse_dask.svg')
@@ -226,11 +245,12 @@ def time_sparse_dask_real():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000)
+    #Y = Y.map_blocks(report_block_info, dtype=Y.dtype)
     Y = normalize(Y)
     #Y = filter_genes_dispersion(Y, n_top_genes=1000)
     #Y = normalize(Y)
     Y = log1p(Y)
-    Y = Y.map_blocks(densify)
+    Y = Y.map_blocks(densify, dtype=Y.dtype)
     Y = scale(Y)
     da.compute(Y, number_per_gene)
     #Y.visualize(filename='sparse_dask.svg')
