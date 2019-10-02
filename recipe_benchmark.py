@@ -8,8 +8,17 @@ import dask.array as da
 import dask.array.random
 import scanpy as sc
 from scanpy.array import sparse_dask, SparseArray
+import warnings
 
 np.random.seed(42)
+
+def materialize_as_ndarray(a):
+    """Convert distributed arrays to ndarrays."""
+    if type(a) in (list, tuple):
+        if da is not None and any(isinstance(arr, da.Array) for arr in a):
+            return da.compute(*a, sync=True)
+        return tuple(np.asarray(arr) for arr in a)
+    return np.asarray(a)
 
 def filter_genes(X, min_number, sparse=False):
     number_per_gene = np.sum(X, axis=0)
@@ -21,6 +30,38 @@ def filter_genes(X, min_number, sparse=False):
     print("gene_subset is a ", type(gene_subset))
     Y = X[:,gene_subset]
     return Y, number_per_gene # note we are returning "side data"
+
+def filter_genes_dispersion(X, n_top_genes, sparse=False):
+    # we need to materialize the mean and var since we use pandas to do computations on them
+    mean, var = materialize_as_ndarray(_get_mean_var(X, sparse))
+    dispersion = var / mean
+    import pandas as pd
+    df = pd.DataFrame()
+    df['mean'] = mean
+    df['dispersion'] = dispersion
+
+    # cell ranger
+    from statsmodels import robust
+    df['mean_bin'] = pd.cut(df['mean'], np.r_[-np.inf,
+                                              np.percentile(df['mean'], np.arange(10, 105, 5)), np.inf])
+    disp_grouped = df.groupby('mean_bin')['dispersion']
+    disp_median_bin = disp_grouped.median()
+    # the next line raises the warning: "Mean of empty slice"
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        disp_mad_bin = disp_grouped.apply(robust.mad)
+    df['dispersion_norm'] = np.abs((
+        df['dispersion'].values
+        - disp_median_bin[df['mean_bin'].values].values
+    )) / disp_mad_bin[df['mean_bin'].values].values
+    dispersion_norm = df['dispersion_norm'].values.astype('float32')
+
+    dispersion_norm = dispersion_norm[~np.isnan(dispersion_norm)]
+    dispersion_norm[::-1].sort()  # interestingly, np.argpartition is slightly slower
+    disp_cut_off = dispersion_norm[n_top_genes-1]
+    gene_subset = df['dispersion_norm'].values >= disp_cut_off
+
+    return X[:,gene_subset]
 
 def normalize(X, sparse=False):
     counts_per_cell = X.sum(1)
@@ -51,9 +92,14 @@ def scale(X):
     X /= scale
     return X
 
-def _get_mean_var(X):
+def _get_mean_var(X, sparse=False):
     mean = X.mean(axis=0)
-    mean_sq = np.multiply(X, X).mean(axis=0)
+    if sparse:
+        mean_sq = X.multiply(X).mean(axis=0)
+        mean = mean.A1
+        mean_sq = mean_sq.A1
+    else:
+        mean_sq = np.multiply(X, X).mean(axis=0)
     var = (mean_sq - mean ** 2) * (X.shape[0] / (X.shape[0] - 1))
     return mean, var
 
@@ -194,6 +240,8 @@ def sparse_comparison():
     adata = load_data()
     Y, number_per_gene = filter_genes(adata.X, 1, sparse=True)
     Y = normalize(Y, sparse=True)
+    Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
+    Y = normalize(Y, sparse=True)
     Y = log1p(Y)
 
     # Scanpy, anndata
@@ -201,6 +249,9 @@ def sparse_comparison():
     sc.pp.filter_genes(adata, min_counts=1)
     sc.pp.normalize_total(adata,  # normalize with total UMI count per cell
                           key_added='n_counts_all')
+    filter_result = sc.pp.filter_genes_dispersion(adata.X, flavor='cell_ranger', n_top_genes=1000, log=False)
+    adata._inplace_subset_var(filter_result.gene_subset)  # filter genes
+    sc.pp.normalize_total(adata)
     sc.pp.log1p(adata)
 
     # Are they the same?
@@ -234,5 +285,7 @@ if __name__ == '__main__':
     #time_pydata_sparse_dask()
 
     # Use real data. Dask still faster.
-    time_sparse_real()
-    time_sparse_dask_real()
+    #time_sparse_real()
+    #time_sparse_dask_real()
+
+    sparse_comparison()
