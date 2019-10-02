@@ -63,25 +63,21 @@ def load_data():
 def sparse_comparison():
     print("sparse_comparison")
 
+    # Reimplementation (no scanpy, anndata)
     adata = load_data()
+    Y, number_per_gene = filter_genes(adata.X, 1, sparse=True)
+    Y = normalize(Y, sparse=True)
+    Y = log1p(Y)
 
-    print(adata.X.shape)
-
+    # Scanpy, anndata
+    adata = load_data()
     sc.pp.filter_genes(adata, min_counts=1)
-
-    print("Hi 1")
-    print(adata.X.shape)
-
-    Y, _ = filter_genes(adata.X, 1, sparse=True)
-
-    print("Hi 2")
-    print(Y.shape)
+    sc.pp.normalize_total(adata,  # normalize with total UMI count per cell
+                          key_added='n_counts_all')
+    sc.pp.log1p(adata)
 
     # Are they the same?
     print((adata.X!=Y).nnz)
-
-    #from numpy.testing import assert_allclose
-    #assert_allclose(adata.X.toarray(), Y.toarray())
 
 if __name__ == '__main__':
     sparse_comparison()
