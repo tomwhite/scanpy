@@ -270,6 +270,18 @@ def sparse_comparison():
     Y = densify(Y)
     Y = scale(Y)
 
+    # Reimplementation in dask (no scanpy, anndata)
+    # TODO: get this to match
+    # adata = load_data()
+    # X = sparse_dask(adata.X, chunks=(10000, adata.X.shape[1]))
+    # Y, number_per_gene = filter_genes(X, 1)
+    # Y = normalize(Y)
+    # Y = filter_genes_dispersion(Y, n_top_genes=1000)
+    # Y = normalize(Y)
+    # Y = log1p(Y)
+    # Y = Y.map_blocks(densify, dtype=Y.dtype)
+    # Y = scale(Y)
+
     # Scanpy, anndata
     adata = load_data()
     # sc.pp.filter_genes(adata, min_counts=1)
