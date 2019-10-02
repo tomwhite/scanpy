@@ -170,7 +170,7 @@ def time_sparse():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000, sparse=True)
-    Y = normalize(Y)
+    Y = normalize(Y, sparse=True)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
@@ -300,16 +300,16 @@ if __name__ == '__main__':
     # We have scipy.sparse, Dask with a wrapper around scipy.sparse, and Dask with pydata sparse.
     # The latter doesn't currently work.
 
-    # time_sparse: 30s to create matrix, 10s to run recipe
-    # time_sparse_dask: 29s to create matrix, 3.3s to run recipe
-    # So we see that Dask again can take advantage of cores.
+    # time_sparse: 30s to create matrix, 5.1s to run recipe
+    # time_sparse_dask: 29s to create matrix, 4.3s to run recipe
+    # So we see that Dask again can take advantage of cores (but not as much?)
 
-    #time_sparse_real()
-    #time_sparse_dask_real()
+    time_sparse()
+    time_sparse_dask()
     #time_pydata_sparse_dask()
 
     # Use real data. Dask still faster.
-    time_sparse_real()
-    time_sparse_dask_real()
+    #time_sparse_real()
+    #time_sparse_dask_real()
 
     #sparse_comparison()
