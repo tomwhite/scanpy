@@ -6,6 +6,7 @@ from sklearn.utils import sparsefuncs
 
 import dask.array as da
 import dask.array.random
+import scanpy as sc
 from scanpy.array import sparse_dask, SparseArray
 
 np.random.seed(42)
@@ -55,6 +56,9 @@ def _get_mean_var(X):
     mean_sq = np.multiply(X, X).mean(axis=0)
     var = (mean_sq - mean ** 2) * (X.shape[0] / (X.shape[0] - 1))
     return mean, var
+
+def load_data():
+    return sc.read('ica_cord_blood_100K.h5ad')
 
 def time_numpy():
     print("time_numpy")
@@ -148,6 +152,60 @@ def time_pydata_sparse_dask():
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
+def time_sparse_real():
+    print("time_sparse_real")
+
+    t0 = time.time()
+    X = load_data().X
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    Y, number_per_gene = filter_genes(X, 5000, sparse=True)
+    Y = normalize(Y)
+    Y = log1p(Y)
+    Y = densify(Y)
+    Y = scale(Y)
+    t2 = time.time()
+    print("time to call filter_genes: ", t2-t1)
+
+def time_sparse_dask_real():
+    print("time_sparse_dask_real")
+
+    t0 = time.time()
+    X = load_data().X
+    X = sparse_dask(X, chunks=(10000, X.shape[1]))
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    Y, number_per_gene = filter_genes(X, 5000)
+    Y = normalize(Y)
+    Y = log1p(Y)
+    Y = Y.map_blocks(densify)
+    Y = scale(Y)
+    da.compute(Y, number_per_gene)
+    #Y.visualize(filename='sparse_dask.svg')
+    t2 = time.time()
+    print("time to call filter_genes: ", t2-t1)
+
+def sparse_comparison():
+    print("sparse_comparison")
+
+    # Reimplementation (no scanpy, anndata)
+    adata = load_data()
+    Y, number_per_gene = filter_genes(adata.X, 1, sparse=True)
+    Y = normalize(Y, sparse=True)
+    Y = log1p(Y)
+
+    # Scanpy, anndata
+    adata = load_data()
+    sc.pp.filter_genes(adata, min_counts=1)
+    sc.pp.normalize_total(adata,  # normalize with total UMI count per cell
+                          key_added='n_counts_all')
+    sc.pp.log1p(adata)
+
+    # Are they the same?
+    print((adata.X!=Y).nnz)
+
 if __name__ == '__main__':
     # Comment out to see how long tasks take
     #from dask.distributed import Client
@@ -171,7 +229,10 @@ if __name__ == '__main__':
     # time_sparse_dask: 29s to create matrix, 3.3s to run recipe
     # So we see that Dask again can take advantage of cores.
 
-    time_sparse()
-    time_sparse_dask()
+    #time_sparse_real()
+    #time_sparse_dask_real()
     #time_pydata_sparse_dask()
 
+    # Use real data. Dask still faster.
+    time_sparse_real()
+    time_sparse_dask_real()
