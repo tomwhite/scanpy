@@ -226,7 +226,7 @@ def time_sparse_real():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000, sparse=True)
-    Y = normalize(Y)
+    Y = normalize(Y, sparse=True)
     #Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
     #Y = normalize(Y)
     Y = log1p(Y)
@@ -304,12 +304,12 @@ if __name__ == '__main__':
     # time_sparse_dask: 29s to create matrix, 4.3s to run recipe
     # So we see that Dask again can take advantage of cores (but not as much?)
 
-    time_sparse()
-    time_sparse_dask()
+    #time_sparse()
+    #time_sparse_dask()
     #time_pydata_sparse_dask()
 
     # Use real data. Dask still faster.
-    #time_sparse_real()
-    #time_sparse_dask_real()
+    time_sparse_real()
+    time_sparse_dask_real()
 
     #sparse_comparison()
