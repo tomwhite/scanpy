@@ -208,6 +208,8 @@ def time_sparse_real():
 
     Y, number_per_gene = filter_genes(X, 5000, sparse=True)
     Y = normalize(Y)
+    #Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
+    #Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
@@ -225,6 +227,8 @@ def time_sparse_dask_real():
 
     Y, number_per_gene = filter_genes(X, 5000)
     Y = normalize(Y)
+    #Y = filter_genes_dispersion(Y, n_top_genes=1000)
+    #Y = normalize(Y)
     Y = log1p(Y)
     Y = Y.map_blocks(densify)
     Y = scale(Y)
@@ -285,7 +289,7 @@ if __name__ == '__main__':
     #time_pydata_sparse_dask()
 
     # Use real data. Dask still faster.
-    #time_sparse_real()
-    #time_sparse_dask_real()
+    time_sparse_real()
+    time_sparse_dask_real()
 
-    sparse_comparison()
+    #sparse_comparison()
