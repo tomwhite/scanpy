@@ -267,19 +267,26 @@ def sparse_comparison():
     Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
     Y = normalize(Y, sparse=True)
     Y = log1p(Y)
+    Y = densify(Y)
+    Y = scale(Y)
 
     # Scanpy, anndata
     adata = load_data()
-    sc.pp.filter_genes(adata, min_counts=1)
-    sc.pp.normalize_total(adata,  # normalize with total UMI count per cell
-                          key_added='n_counts_all')
-    filter_result = sc.pp.filter_genes_dispersion(adata.X, flavor='cell_ranger', n_top_genes=1000, log=False)
-    adata._inplace_subset_var(filter_result.gene_subset)  # filter genes
-    sc.pp.normalize_total(adata)
-    sc.pp.log1p(adata)
+    # sc.pp.filter_genes(adata, min_counts=1)
+    # sc.pp.normalize_total(adata,  # normalize with total UMI count per cell
+    #                       key_added='n_counts_all')
+    # filter_result = sc.pp.filter_genes_dispersion(adata.X, flavor='cell_ranger', n_top_genes=1000, log=False)
+    # adata._inplace_subset_var(filter_result.gene_subset)  # filter genes
+    # sc.pp.normalize_total(adata)
+    # sc.pp.log1p(adata)
+    # sc.pp.scale(adata)
+
+    # Use the recipe (the above is commented out but can be useful for debugging)
+    sc.pp.recipe_zheng17(adata)
 
     # Are they the same?
-    print((adata.X!=Y).nnz)
+    #print((adata.X!=Y).nnz) # sparse
+    print(np.allclose(adata.X, Y)) # dense
 
 if __name__ == '__main__':
     # Comment out to see how long tasks take
@@ -308,7 +315,7 @@ if __name__ == '__main__':
     #time_sparse_dask()
     #time_pydata_sparse_dask()
 
-    # Use real data. Dask still faster.
+    # Use real data.
     time_sparse_real()
     time_sparse_dask_real()
 
