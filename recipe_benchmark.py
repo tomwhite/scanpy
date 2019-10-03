@@ -95,6 +95,9 @@ def log1p(X):
 def densify(X):
     if issparse(X):
         return X.toarray()
+    elif isinstance(X, da.Array):
+        # densify individual blocks - useful if backed by a SparseArray
+        return X.map_blocks(densify, dtype=X.dtype)
     return np.asarray(X)
 
 def scale(X):
@@ -188,7 +191,7 @@ def time_sparse_dask():
     Y, number_per_gene = filter_genes(X, 5000)
     Y = normalize(Y)
     Y = log1p(Y)
-    Y = Y.map_blocks(densify, dtype=Y.dtype)
+    Y = densify(Y)
     Y = scale(Y)
     da.compute(Y, number_per_gene)
     #Y.visualize(filename='sparse_dask.svg')
@@ -248,7 +251,7 @@ def time_sparse_dask_real():
     #Y = filter_genes_dispersion(Y, n_top_genes=1000)
     #Y = normalize(Y)
     Y = log1p(Y)
-    Y = Y.map_blocks(densify, dtype=Y.dtype)
+    Y = densify(Y)
     Y = scale(Y)
     da.compute(Y, number_per_gene)
     #Y.visualize(filename='sparse_dask.svg')
@@ -277,7 +280,7 @@ def sparse_comparison():
     # Y = filter_genes_dispersion(Y, n_top_genes=1000)
     # Y = normalize(Y)
     # Y = log1p(Y)
-    # Y = Y.map_blocks(densify, dtype=Y.dtype)
+    # Y = densify(Y)
     # Y = scale(Y)
 
     # Scanpy, anndata
