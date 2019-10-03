@@ -21,20 +21,18 @@ def materialize_as_ndarray(a):
         return tuple(np.asarray(arr) for arr in a)
     return np.asarray(a)
 
-def filter_genes(X, min_number, sparse=False):
+def filter_genes(X, min_number):
     number_per_gene = np.sum(X, axis=0)
-    if sparse:
+    if issparse(X):
         number_per_gene = number_per_gene.A1
     gene_subset = number_per_gene >= min_number
     s = np.sum(~gene_subset)
-    print("Filtered out", s)
-    print("gene_subset is a ", type(gene_subset))
     Y = X[:,gene_subset]
     return Y, number_per_gene # note we are returning "side data"
 
-def filter_genes_dispersion(X, n_top_genes, sparse=False):
+def filter_genes_dispersion(X, n_top_genes):
     # we need to materialize the mean and var since we use pandas to do computations on them
-    mean, var = materialize_as_ndarray(_get_mean_var(X, sparse))
+    mean, var = materialize_as_ndarray(_get_mean_var(X))
     dispersion = var / mean
     import pandas as pd
     df = pd.DataFrame()
@@ -64,13 +62,13 @@ def filter_genes_dispersion(X, n_top_genes, sparse=False):
 
     return X[:,gene_subset]
 
-def normalize(X, sparse=False):
+def normalize(X):
     counts_per_cell = X.sum(1)
     counts = np.ravel(counts_per_cell)
     after = np.median(counts[counts>0])
     counts += (counts == 0)
     counts /= after
-    if sparse:
+    if issparse(X):
         sparsefuncs.inplace_row_scale(X, 1/counts)
     else:
         X /= counts[:, None]
@@ -107,9 +105,9 @@ def scale(X):
     X /= scale
     return X
 
-def _get_mean_var(X, sparse=False):
+def _get_mean_var(X):
     mean = X.mean(axis=0)
-    if sparse:
+    if issparse(X):
         mean_sq = X.multiply(X).mean(axis=0)
         mean = mean.A1
         mean_sq = mean_sq.A1
@@ -169,8 +167,8 @@ def time_sparse():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000, sparse=True)
-    Y = normalize(Y, sparse=True)
+    Y, number_per_gene = filter_genes(X, 5000)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
@@ -225,9 +223,9 @@ def time_sparse_real():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000, sparse=True)
-    Y = normalize(Y, sparse=True)
-    #Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
+    Y, number_per_gene = filter_genes(X, 5000)
+    Y = normalize(Y)
+    #Y = filter_genes_dispersion(Y, n_top_genes=1000)
     #Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
@@ -262,10 +260,10 @@ def sparse_comparison():
 
     # Reimplementation (no scanpy, anndata)
     adata = load_data()
-    Y, number_per_gene = filter_genes(adata.X, 1, sparse=True)
-    Y = normalize(Y, sparse=True)
-    Y = filter_genes_dispersion(Y, n_top_genes=1000, sparse=True)
-    Y = normalize(Y, sparse=True)
+    Y, number_per_gene = filter_genes(adata.X, 1)
+    Y = normalize(Y)
+    Y = filter_genes_dispersion(Y, n_top_genes=1000)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
