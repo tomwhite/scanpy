@@ -122,6 +122,7 @@ def _get_mean_var(X):
 
 def load_data():
     return sc.read('ica_cord_blood_100K.h5ad')
+    #return sc.read_10x_h5('1M_neurons_filtered_gene_bc_matrices_h5.h5')
 
 def report_block_info(X, block_info=None):
     print(block_info, type(X))
@@ -190,7 +191,7 @@ def time_sparse_dask():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000)
-    Y = normalize_sparse_dask(Y)
+    Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
@@ -248,7 +249,7 @@ def time_sparse_dask_real():
 
     Y, number_per_gene = filter_genes(X, 5000)
     #Y = Y.map_blocks(report_block_info, dtype=Y.dtype)
-    Y = normalize_sparse_dask(Y)
+    Y = normalize(Y)
     #Y = filter_genes_dispersion(Y, n_top_genes=1000)
     #Y = normalize(Y)
     Y = log1p(Y)
@@ -277,9 +278,9 @@ def sparse_comparison():
     # adata = load_data()
     # X = sparse_dask(adata.X, chunks=(10000, adata.X.shape[1]))
     # Y, number_per_gene = filter_genes(X, 1)
-    # Y = normalize_sparse_dask(Y)
+    # Y = normalize(Y)
     # Y = filter_genes_dispersion(Y, n_top_genes=1000)
-    # Y = normalize_sparse_dask(Y)
+    # Y = normalize(Y)
     # Y = log1p(Y)
     # Y = densify(Y)
     # Y = scale(Y)
@@ -330,6 +331,8 @@ if __name__ == '__main__':
     #time_pydata_sparse_dask()
 
     # Use real data.
+    # On a 64 core machine, time_sparse_real 5.3s, time_sparse_dask_real 3.0s
+    # Using the 1M cell dataset: time_sparse_real 334s, time_sparse_dask_real 138s, a 2.4x speedup
     time_sparse_real()
     time_sparse_dask_real()
 
