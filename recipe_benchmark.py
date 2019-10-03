@@ -81,12 +81,13 @@ def normalize_sparse_dask(X):
     after = np.median(counts[counts>0])
     counts += (counts == 0)
     counts /= after
-    def inplace_row_scale(X, block_info=None):
+    def inplace_row_scale_block(X, block_info=None):
         if block_info == '__block_info_dummy__':
             return X
         loc = block_info[0]['array-location'][0]
-        return SparseArray(sparsefuncs.inplace_row_scale(X.value, 1/counts[loc[0]:loc[1]]))
-    return X.map_blocks(inplace_row_scale, dtype=X.dtype)
+        sparsefuncs.inplace_row_scale(X.value, 1/counts[loc[0]:loc[1]])
+        return X
+    return X.map_blocks(inplace_row_scale_block, dtype=X.dtype)
 
 def log1p(X):
     # TODO: try using out=X
@@ -189,7 +190,7 @@ def time_sparse_dask():
     print("time to create matrix: ", t1-t0)
 
     Y, number_per_gene = filter_genes(X, 5000)
-    Y = normalize(Y)
+    Y = normalize_sparse_dask(Y)
     Y = log1p(Y)
     Y = densify(Y)
     Y = scale(Y)
@@ -247,7 +248,7 @@ def time_sparse_dask_real():
 
     Y, number_per_gene = filter_genes(X, 5000)
     #Y = Y.map_blocks(report_block_info, dtype=Y.dtype)
-    Y = normalize(Y)
+    Y = normalize_sparse_dask(Y)
     #Y = filter_genes_dispersion(Y, n_top_genes=1000)
     #Y = normalize(Y)
     Y = log1p(Y)
@@ -276,9 +277,9 @@ def sparse_comparison():
     # adata = load_data()
     # X = sparse_dask(adata.X, chunks=(10000, adata.X.shape[1]))
     # Y, number_per_gene = filter_genes(X, 1)
-    # Y = normalize(Y)
+    # Y = normalize_sparse_dask(Y)
     # Y = filter_genes_dispersion(Y, n_top_genes=1000)
-    # Y = normalize(Y)
+    # Y = normalize_sparse_dask(Y)
     # Y = log1p(Y)
     # Y = densify(Y)
     # Y = scale(Y)
