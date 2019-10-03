@@ -42,8 +42,12 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __array__(self, dtype=None, **kwargs):
         # respond to np.asarray
-        if isinstance(self.value, np.ndarray) or (cp is not None and isinstance(self.value, cp.ndarray)):
+        if isinstance(self.value, np.ndarray):
             x = self.value
+        elif cp is not None and isinstance(self.value, cp.ndarray):
+            x = self.value.get()
+        elif cp is not None and cupyx.scipy.sparse.issparse(self.value):
+            x = self.value.toarray().get()
         else:
             x = self.value.toarray()
         if dtype and x.dtype != dtype:
