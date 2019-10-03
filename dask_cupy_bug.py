@@ -1,3 +1,8 @@
+# Bug: https://github.com/dask/dask/issues/5050
+# Upgrading to numpy 1.17 fixes it!
+# sudo /opt/anaconda3/bin/pip uninstall -y numpy
+# pip install --user numpy
+
 import cupy
 import dask.array as da
 import numpy as np

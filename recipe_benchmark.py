@@ -163,6 +163,27 @@ def time_dask():
     t2 = time.time()
     print("time to call filter_genes: ", t2-t1)
 
+def time_dask_cupy():
+    print("time_dask_cupy")
+
+    import cupy
+
+    t0 = time.time()
+    #X = dask.array.random.random((100000, 3000), chunks=(10000, 3000))
+    X = cupy.array(np.random.rand(100000, 3000))
+    X = dask.array.from_array(X, chunks=(10000, 3000))
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    Y, number_per_gene = filter_genes(X, 50000)
+    Y = normalize(Y)
+    Y = log1p(Y)
+    Y = scale(Y)
+    Y = Y.sum() # call sum so we don't have to allocate output
+    da.compute(Y, number_per_gene)
+    t2 = time.time()
+    print("time to call filter_genes: ", t2-t1)
+
 def time_sparse():
     print("time_sparse")
 
@@ -314,8 +335,8 @@ if __name__ == '__main__':
     # So we see that Dask can take advantage of cores to do the processing faster.
 
     #time_numpy()
-
     #time_dask()
+    #time_dask_cupy()
 
     # Compare sparse matrices. We start with sparse matrices, but then convert to
     # dense before scaling, since this causes the matrix to become dense anyway.
