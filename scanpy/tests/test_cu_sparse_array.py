@@ -25,7 +25,7 @@ class TestCuSparseArray:
 
     @pytest.fixture()
     def xs(self, x):
-        return SparseArray(cupyx.scipy.sparse.csr_matrix(x))
+        return SparseArray(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)))
 
     def test_identity(self, x, xs):
         assert_allclose(np.asarray(xs), x)
