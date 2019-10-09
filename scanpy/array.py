@@ -39,7 +39,7 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, value):
         if not _issparse(value):
-            raise ValueError("SparseArray only takes a scipy.sparse or cupyx.scipy.sparse value")
+            raise ValueError(f"SparseArray only takes a scipy.sparse or cupyx.scipy.sparse value, but given {type(value)}")
         self.value = value
 
     def __array__(self, dtype=None, **kwargs):
