@@ -31,16 +31,16 @@ class TestCuSparseArray:
         assert_allclose(np.asarray(xs), x)
 
     def test_astype(self, x, xs):
-        xs = xs.astype(int)
-        x = x.astype(int)
+        xs = xs.astype(np.float32)
+        x = x.astype(np.float32)
         assert xs.dtype == x.dtype
         assert_allclose(np.asarray(xs), x)
 
     def test_astype_inplace(self, x, xs):
         original_id = id(xs)
-        xs = xs.astype(int, copy=False)
+        xs = xs.astype(np.float32, copy=False)
         assert original_id == id(xs)
-        x = x.astype(int, copy=False)
+        x = x.astype(np.float32, copy=False)
         assert xs.dtype == x.dtype
         assert_allclose(np.asarray(xs), x)
 
