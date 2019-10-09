@@ -175,10 +175,17 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
             v = other
         return SparseArray(self.value >= v)
 
+    def _is_cupy_sparse(self):
+        return cp is not None and cupyx.scipy.sparse.issparse(self.value)
+
     def astype(self, dtype, copy=True):
         dtype = dtype if isinstance(dtype, np.dtype) else np.dtype(dtype)
         if copy:
-            return SparseArray(self.value.astype(dtype, copy=copy))
+            return SparseArray(self.value.astype(dtype))
+        elif self._is_cupy_sparse():
+            # cupy sparse doesn't support the copy argument
+            self.value = self.value.astype(dtype)
+            return self
         else:
             self.value = self.value.astype(dtype, copy=copy)
             return self
