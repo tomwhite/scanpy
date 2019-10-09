@@ -25,6 +25,19 @@ def row_scale(sparse_dask_array, scale):
             return X / scale[loc[0]:loc[1]]
     return sparse_dask_array.map_blocks(row_scale_block, dtype=sparse_dask_array.dtype)
 
+def _convert_to_numpy_array(arr, dtype=None):
+    if isinstance(arr, np.ndarray):
+        ret = arr
+    elif cp is not None and isinstance(arr, cp.ndarray):
+        ret = arr.get()
+    elif cp is not None and cupyx.scipy.sparse.issparse(arr):
+        ret = arr.toarray().get()
+    else:
+        ret = arr.toarray()
+    if dtype and ret.dtype != dtype:
+        ret = ret.astype(dtype)
+    return ret
+
 def _calculation_method(name):
     def calc(self, axis=None, out=None, dtype=None, **kwargs):
         if axis == 0 or axis == 1:
@@ -56,17 +69,7 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __array__(self, dtype=None, **kwargs):
         # respond to np.asarray
-        if isinstance(self.value, np.ndarray):
-            x = self.value
-        elif cp is not None and isinstance(self.value, cp.ndarray):
-            x = self.value.get()
-        elif cp is not None and cupyx.scipy.sparse.issparse(self.value):
-            x = self.value.toarray().get()
-        else:
-            x = self.value.toarray()
-        if dtype and x.dtype != dtype:
-            x = x.astype(dtype)
-        return x
+        return _convert_to_numpy_array(self.value, dtype)
 
     # One might also consider adding the built-in list type to this
     # list, to support operations like np.add(array_like, list)
@@ -124,9 +127,9 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __getitem__(self, item):
         if isinstance(item, numbers.Number):
-            return self.value.__getitem__(item).toarray().squeeze()
+            return _convert_to_numpy_array(self.value.__getitem__(item)).squeeze()
         elif isinstance(item, tuple) and (isinstance(item[0], numbers.Number) or isinstance(item[1], numbers.Number)):
-            return self.value.__getitem__(item).toarray().squeeze()
+            return _convert_to_numpy_array(self.value.__getitem__(item)).squeeze()
         # replace slices that span the entire column or row with slice(None) to ensure cupy sparse doesn't blow up
         if isinstance(item[0], slice) and item[0].start == 0 and item[0].stop == self.shape[0] and item[0].step is None:
             item0 = slice(None)
@@ -138,42 +141,22 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
             item1 = item[1]
         return SparseArray(self.value.__getitem__((item0, item1)))
 
+    def _get_value(self, other):
+        # get the value if a SparseArray, or just return other
+        return other.value if isinstance(other, SparseArray) else other
+
     def __lt__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value < v)
+        return SparseArray(self.value < self._get_value(other))
     def __le__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value <= v)
+        return SparseArray(self.value <= self._get_value(other))
     def __eq__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value == v)
+        return SparseArray(self.value == self._get_value(other))
     def __ne__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value != v)
+        return SparseArray(self.value != self._get_value(other))
     def __gt__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value > v)
+        return SparseArray(self.value > self._get_value(other))
     def __ge__(self, other):
-        if isinstance(other, SparseArray):
-            v = other.value
-        else:
-            v = other
-        return SparseArray(self.value >= v)
+        return SparseArray(self.value >= self._get_value(other))
 
     def _is_cupy_sparse(self):
         return cp is not None and cupyx.scipy.sparse.issparse(self.value)
