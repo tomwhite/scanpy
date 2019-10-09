@@ -2,6 +2,7 @@ import numbers
 import numpy as np
 import scipy.sparse
 from scipy.sparse import issparse
+from sklearn.utils import sparsefuncs
 
 # import cupy if installed
 try:
@@ -179,6 +180,10 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     prod = _calculation_method('prod')
     all = _calculation_method('all')
     any = _calculation_method('any')
+
+    def inplace_row_scale(self, scale):
+        sparsefuncs.inplace_row_scale(self.value, scale)
+        return self
 
     def asdask(self, chunks):
         import dask.array as da

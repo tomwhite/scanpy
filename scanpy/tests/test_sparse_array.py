@@ -63,9 +63,15 @@ class TestSparseArray:
     #     x = x + a
     #     assert_allclose(np.asarray(xs), x)
 
-    def test_broadcast_col_div(self, x, xs):
+    # def test_broadcast_col_div(self, x, xs):
+    #     a = np.array([[1.0], [2.0], [3.0]])
+    #     xs = xs / a
+    #     x = x / a
+    #     assert_allclose(np.asarray(xs), x)
+
+    def test_inplace_row_scale(self, x, xs):
         a = np.array([[1.0], [2.0], [3.0]])
-        xs = xs / a
+        xs = xs.inplace_row_scale(1 / a)
         x = x / a
         assert_allclose(np.asarray(xs), x)
 
