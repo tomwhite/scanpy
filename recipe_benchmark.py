@@ -8,7 +8,7 @@ from sklearn.utils import sparsefuncs
 import dask.array as da
 import dask.array.random
 import scanpy as sc
-from scanpy.array import sparse_dask, SparseArray
+from scanpy.array import sparse_dask, SparseArray, row_scale
 import warnings
 
 np.random.seed(42)
@@ -70,24 +70,11 @@ def normalize(X):
     counts /= after
     if issparse(X):
         sparsefuncs.inplace_row_scale(X, 1/counts)
+    elif isinstance(X, da.Array):
+        X = row_scale(X, 1/counts)
     else:
         X /= counts[:, None]
     return X
-
-def normalize_sparse_dask(X):
-    # Do the equivalent of inplace_row_scale for SparseArray
-    counts_per_cell = X.sum(1)
-    counts = np.ravel(counts_per_cell)
-    after = np.median(counts[counts>0])
-    counts += (counts == 0)
-    counts /= after
-    def inplace_row_scale_block(X, block_info=None):
-        if block_info == '__block_info_dummy__':
-            return X
-        loc = block_info[0]['array-location'][0]
-        sparsefuncs.inplace_row_scale(X.value, 1/counts[loc[0]:loc[1]])
-        return X
-    return X.map_blocks(inplace_row_scale_block, dtype=X.dtype)
 
 def log1p(X):
     # TODO: try using out=X

@@ -19,7 +19,10 @@ def row_scale(sparse_dask_array, scale):
         if block_info == '__block_info_dummy__':
             return X
         loc = block_info[0]['array-location'][0]
-        return X.inplace_row_scale(scale[loc[0]:loc[1]])
+        if isinstance(X, SparseArray):
+            return X.inplace_row_scale(scale[loc[0]:loc[1]])
+        else:
+            return X / scale[loc[0]:loc[1]]
     return sparse_dask_array.map_blocks(row_scale_block, dtype=sparse_dask_array.dtype)
 
 def _calculation_method(name):
