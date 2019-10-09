@@ -14,13 +14,13 @@ except ImportError:
 def sparse_dask(arr, chunks):
     return SparseArray(arr).asdask(chunks)
 
-def inplace_row_scale(sparse_dask_array, scale):
-    def inplace_row_scale_block(X, block_info=None):
+def row_scale(sparse_dask_array, scale):
+    def row_scale_block(X, block_info=None):
         if block_info == '__block_info_dummy__':
             return X
         loc = block_info[0]['array-location'][0]
         return X.inplace_row_scale(scale[loc[0]:loc[1]])
-    return sparse_dask_array.map_blocks(inplace_row_scale_block, dtype=sparse_dask_array.dtype)
+    return sparse_dask_array.map_blocks(row_scale_block, dtype=sparse_dask_array.dtype)
 
 def _calculation_method(name):
     def calc(self, axis=None, out=None, dtype=None, **kwargs):
