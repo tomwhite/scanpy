@@ -41,7 +41,11 @@ def _convert_to_numpy_array(arr, dtype=None):
 def _calculation_method(name):
     def calc(self, axis=None, out=None, dtype=None, **kwargs):
         if axis is None:
-            return getattr(self.value, name)(axis)
+            if _iscupysparse(self.value):
+                # cupy sparse returns a zero dimensional array, so we call item() to get its only element
+                return getattr(self.value, name)(axis).item()
+            else:
+                return getattr(self.value, name)(axis)
         elif axis == 0 or axis == 1:
             return getattr(self.value, name)(axis).A.squeeze()
         elif isinstance(axis, tuple) and len(axis) == 1 and (axis[0] == 0 or axis[0] == 1):
@@ -56,8 +60,11 @@ def _calculation_method(name):
         return SparseArray(scipy.sparse.csr_matrix(result))
     return calc
 
+def _iscupysparse(x):
+    return cp is not None and cupyx.scipy.sparse.issparse(x)
+
 def _issparse(x):
-    return issparse(x) or (cp is not None and cupyx.scipy.sparse.issparse(x))
+    return issparse(x) or _iscupysparse(x)
 
 class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     """
