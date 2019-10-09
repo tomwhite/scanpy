@@ -38,6 +38,8 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     __array_priority__ = 10.0
 
     def __init__(self, value):
+        if not _issparse(value):
+            raise ValueError("SparseArray only takes a scipy.sparse or cupyx.scipy.sparse value")
         self.value = value
 
     def __array__(self, dtype=None, **kwargs):
