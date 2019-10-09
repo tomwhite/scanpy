@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import scipy.sparse
 
-from scanpy.array import sparse_dask
+from scanpy.array import sparse_dask, inplace_row_scale
 
 class TestSparseDaskArray:
     @pytest.fixture()
@@ -64,9 +64,15 @@ class TestSparseDaskArray:
     #     x = x + a
     #     assert_allclose(np.asarray(xd), x)
 
-    def test_broadcast_col(self, x, xd):
+    # def test_broadcast_col(self, x, xd):
+    #     a = np.array([[1.0], [2.0], [3.0]])
+    #     xd = xd / a
+    #     x = x / a
+    #     assert_allclose(np.asarray(xd), x)
+
+    def test_inplace_row_scale(self, x, xd):
         a = np.array([[1.0], [2.0], [3.0]])
-        xd = xd / a
+        xd = inplace_row_scale(xd, 1 / a)
         x = x / a
         assert_allclose(np.asarray(xd), x)
 
