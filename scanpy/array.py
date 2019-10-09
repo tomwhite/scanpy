@@ -62,8 +62,12 @@ def _calculation_method(name):
             v = self.value
             for ax in axis:
                 v = getattr(v, name)(ax)
+            if _iscupysparse(self.value):
+                return SparseArray(cupyx.scipy.sparse.csr_matrix(v))
             return SparseArray(scipy.sparse.csr_matrix(v))
         result = getattr(self.value, name)(axis)
+        if _iscupysparse(self.value):
+            return SparseArray(cupyx.scipy.sparse.csr_matrix(result))
         return SparseArray(scipy.sparse.csr_matrix(result))
     return calc
 
