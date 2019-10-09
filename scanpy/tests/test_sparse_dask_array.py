@@ -164,7 +164,7 @@ class TestSparseDaskArray:
     def test_sum(self, x, xd):
         totald = np.sum(xd)
         total = np.sum(x)
-        assert totald == pytest.approx(total)
+        assert np.asarray(totald) == pytest.approx(total)
 
     def test_sum_cols(self, x, xd):
         xd = np.sum(xd, axis=0)
@@ -179,7 +179,7 @@ class TestSparseDaskArray:
     def test_mean(self, x, xd):
         meand = np.mean(xd)
         mean = np.mean(x)
-        assert meand == pytest.approx(mean)
+        assert np.asarray(meand) == pytest.approx(mean)
 
     def test_mean_cols(self, x, xd):
         xd = np.mean(xd, axis=0)

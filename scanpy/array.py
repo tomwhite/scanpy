@@ -15,7 +15,7 @@ def sparse_dask(arr, chunks):
     return SparseArray(arr).asdask(chunks)
 
 def _calculation_method(name):
-    def calc(self, axis, out=None, dtype=None, **kwargs):
+    def calc(self, axis=None, out=None, dtype=None, **kwargs):
         if axis == 0 or axis == 1:
             return getattr(self.value, name)(axis).A.squeeze()
         elif isinstance(axis, tuple) and len(axis) == 1 and (axis[0] == 0 or axis[0] == 1):
