@@ -201,6 +201,8 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     any = _calculation_method('any')
 
     def inplace_row_scale(self, scale):
+        if self._is_cupy_sparse():
+            raise NotImplementedError
         sparsefuncs.inplace_row_scale(self.value, scale)
         return self
 
