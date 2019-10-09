@@ -47,16 +47,23 @@ def _calculation_method(name):
             else:
                 return getattr(self.value, name)(axis)
         elif axis == 0 or axis == 1:
-            return getattr(self.value, name)(axis).A.squeeze()
+            result = getattr(self.value, name)(axis)
+            if _iscupysparse(result):
+                return _convert_to_numpy_array(result).squeeze()
+            else:
+                return result.A.squeeze()
         elif isinstance(axis, tuple) and len(axis) == 1 and (axis[0] == 0 or axis[0] == 1):
-            return getattr(self.value, name)(axis[0]).A
+            result = getattr(self.value, name)(axis[0])
+            if _iscupysparse(result):
+                return _convert_to_numpy_array(result)
+            else:
+                return result.A
         elif isinstance(axis, tuple):
             v = self.value
             for ax in axis:
                 v = getattr(v, name)(ax)
             return SparseArray(scipy.sparse.csr_matrix(v))
         result = getattr(self.value, name)(axis)
-        print("result", type(result), result)
         return SparseArray(scipy.sparse.csr_matrix(result))
     return calc
 
