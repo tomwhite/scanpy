@@ -171,7 +171,7 @@ class TestCuSparseArray:
     def test_sum(self, x, xs):
         totald = np.sum(xs)
         total = np.sum(x)
-        assert np.asarray(totald) == pytest.approx(total)
+        assert totald == pytest.approx(total)
 
     def test_sum_cols(self, x, xs):
         xs = np.sum(xs, axis=0)
@@ -186,7 +186,7 @@ class TestCuSparseArray:
     def test_mean(self, x, xs):
         meand = np.mean(xs)
         mean = np.mean(x)
-        assert np.asarray(meand) == pytest.approx(mean)
+        assert meand == pytest.approx(mean)
 
     def test_mean_cols(self, x, xs):
         xs = np.mean(xs, axis=0)

@@ -40,7 +40,9 @@ def _convert_to_numpy_array(arr, dtype=None):
 
 def _calculation_method(name):
     def calc(self, axis=None, out=None, dtype=None, **kwargs):
-        if axis == 0 or axis == 1:
+        if axis is None:
+            return getattr(self.value, name)(axis)
+        elif axis == 0 or axis == 1:
             return getattr(self.value, name)(axis).A.squeeze()
         elif isinstance(axis, tuple) and len(axis) == 1 and (axis[0] == 0 or axis[0] == 1):
             return getattr(self.value, name)(axis[0]).A
