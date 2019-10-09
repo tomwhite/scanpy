@@ -90,9 +90,9 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
                 x.value if isinstance(x, SparseArray) else x
                 for x in out)
         # special case multiplication for sparse input, so it is elementwise, not matrix multiplication
-        if ufunc.__name__ == 'multiply' and len(inputs) == 2 and _issparse(inputs[0]):
+        if ufunc.__name__ == 'multiply' and len(inputs) == 2 and _issparse(inputs[0]) and _issparse(inputs[1]):
             result = inputs[0].multiply(inputs[1])
-        elif ufunc.__name__ == 'true_divide' and len(inputs) == 2 and _issparse(inputs[0]):
+        elif ufunc.__name__ == 'true_divide' and len(inputs) == 2 and _issparse(inputs[0]) and _issparse(inputs[1]):
             result = inputs[0] / inputs[1]
         else:
             result = getattr(ufunc, method)(*inputs, **kwargs)
