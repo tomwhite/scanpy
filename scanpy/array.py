@@ -49,7 +49,9 @@ def _calculation_method(name):
             for ax in axis:
                 v = getattr(v, name)(ax)
             return SparseArray(scipy.sparse.csr_matrix(v))
-        return SparseArray(scipy.sparse.csr_matrix(getattr(self.value, name)(axis)))
+        result = getattr(self.value, name)(axis)
+        print("result", type(result), result)
+        return SparseArray(scipy.sparse.csr_matrix(result))
     return calc
 
 def _issparse(x):
