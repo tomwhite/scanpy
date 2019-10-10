@@ -3,7 +3,20 @@ import numpy as np
 from numpy.testing import assert_allclose
 import scipy.sparse
 
-from scanpy.array import sparse_dask, row_scale
+from scanpy.array import row_scale
+
+# Only run cupy tests if installed
+try:
+    import cupyx
+    import cupy as cp
+    TESTS = [
+        "SparseArray",
+        "CupySparseArray",
+    ]
+except ImportError:
+    TESTS = [
+        "SparseArray",
+    ]
 
 class TestSparseDaskArray:
     @pytest.fixture()
@@ -16,16 +29,21 @@ class TestSparseDaskArray:
             ]
         )
 
-    @pytest.fixture()
-    def xd(self, x):
-        return sparse_dask(scipy.sparse.csr_matrix(x), chunks=(2, 5))
+    @pytest.fixture(params=TESTS)
+    def xd(self, x, request):
+        if request.param == "SparseArray":
+            from scanpy.array import sparse_dask
+            yield sparse_dask(scipy.sparse.csr_matrix(x), chunks=(2, 5))
+        elif request.param == "CupySparseArray":
+            from scanpy.cuarray import sparse_dask
+            yield sparse_dask(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)), chunks=(2, 5))
 
     def test_identity(self, x, xd):
         assert_allclose(np.asarray(xd), x)
 
     def test_astype(self, x, xd):
-        xd = xd.astype(int)
-        x = x.astype(int)
+        xd = xd.astype(np.float32)
+        x = x.astype(np.float32)
         assert xd.dtype == x.dtype
         assert_allclose(np.asarray(xd), x)
 
