@@ -8,7 +8,7 @@ from sklearn.utils import sparsefuncs
 import dask.array as da
 import dask.array.random
 import scanpy as sc
-from scanpy.array import sparse_dask, SparseArray, row_scale
+from scanpy.sparsearray import sparse_dask, row_scale
 import warnings
 
 np.random.seed(42)

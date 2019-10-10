@@ -5,7 +5,7 @@ import cupy as cp
 from cupyx.scipy.sparse import issparse
 
 
-def sparse_dask(arr, chunks):
+def cupy_sparse_dask(arr, chunks):
     return CupySparseArray(arr).asdask(chunks)
 
 def _convert_to_numpy_array(arr, dtype=None):

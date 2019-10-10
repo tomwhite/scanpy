@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import scipy.sparse
 
-from scanpy.array import SparseArray
+from scanpy.sparsearray import SparseArray
 
 # Only run cupy tests if installed
 try:
@@ -34,7 +34,7 @@ class TestSparseArray:
         if request.param == "SparseArray":
             yield SparseArray(scipy.sparse.csr_matrix(x))
         elif request.param == "CupySparseArray":
-            from scanpy.cuarray import CupySparseArray
+            from scanpy.sparsearray import CupySparseArray
             yield CupySparseArray(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)))
 
     def test_identity(self, x, xs):
