@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import scipy.sparse
 
-from scanpy.array import SparseArray
+from scanpy.cuarray import CupySparseArray
 
 # import cupy if installed
 try:
@@ -25,7 +25,7 @@ class TestCuSparseArray:
 
     @pytest.fixture()
     def xs(self, x):
-        return SparseArray(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)))
+        return CupySparseArray(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)))
 
     def test_identity(self, x, xs):
         assert_allclose(np.asarray(xs), x)

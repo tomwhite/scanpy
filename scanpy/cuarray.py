@@ -1,29 +1,12 @@
 import numbers
 import numpy as np
-import scipy.sparse
-from scipy.sparse import issparse
-from sklearn.utils import sparsefuncs
+import cupyx
+import cupy as cp
+from cupyx.scipy.sparse import issparse
 
-# import cupy if installed
-try:
-    import cupyx
-    import cupy as cp
-except ImportError:
-    cp = None
 
 def sparse_dask(arr, chunks):
-    return SparseArray(arr).asdask(chunks)
-
-def row_scale(sparse_dask_array, scale):
-    def row_scale_block(X, block_info=None):
-        if block_info == '__block_info_dummy__':
-            return X
-        loc = block_info[0]['array-location'][0]
-        if isinstance(X, SparseArray):
-            return X.inplace_row_scale(scale[loc[0]:loc[1]])
-        else:
-            return X / scale[loc[0]:loc[1]]
-    return sparse_dask_array.map_blocks(row_scale_block, dtype=sparse_dask_array.dtype)
+    return CupySparseArray(arr).asdask(chunks)
 
 def _convert_to_numpy_array(arr, dtype=None):
     if isinstance(arr, np.ndarray):
@@ -41,52 +24,32 @@ def _convert_to_numpy_array(arr, dtype=None):
 def _calculation_method(name):
     def calc(self, axis=None, out=None, dtype=None, **kwargs):
         if axis is None:
-            if _iscupysparse(self.value):
-                # cupy sparse returns a zero dimensional array, so we call item() to get its only element
-                return getattr(self.value, name)(axis).item()
-            else:
-                return getattr(self.value, name)(axis)
+            # cupy sparse returns a zero dimensional array, so we call item() to get its only element
+            return getattr(self.value, name)(axis).item()
         elif axis == 0 or axis == 1:
-            result = getattr(self.value, name)(axis)
-            if _iscupysparse(result):
-                return _convert_to_numpy_array(result).squeeze()
-            else:
-                return result.A.squeeze()
+            return _convert_to_numpy_array(getattr(self.value, name)(axis)).squeeze()
         elif isinstance(axis, tuple) and len(axis) == 1 and (axis[0] == 0 or axis[0] == 1):
-            result = getattr(self.value, name)(axis[0])
-            if _iscupysparse(result):
-                return _convert_to_numpy_array(result)
-            else:
-                return result.A
+            return _convert_to_numpy_array(getattr(self.value, name)(axis[0]))
         elif isinstance(axis, tuple):
             v = self.value
             for ax in axis:
                 v = getattr(v, name)(ax)
-            if _iscupysparse(self.value):
-                return SparseArray(cupyx.scipy.sparse.csr_matrix(v))
-            return SparseArray(scipy.sparse.csr_matrix(v))
+            return CupySparseArray(cupyx.scipy.sparse.csr_matrix(v))
         result = getattr(self.value, name)(axis)
-        if _iscupysparse(self.value):
-            return SparseArray(cupyx.scipy.sparse.csr_matrix(result))
-        return SparseArray(scipy.sparse.csr_matrix(result))
+        return CupySparseArray(cupyx.scipy.sparse.csr_matrix(result))
     return calc
 
-def _iscupysparse(x):
-    return cp is not None and cupyx.scipy.sparse.issparse(x)
 
-def _issparse(x):
-    return issparse(x) or _iscupysparse(x)
-
-class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
+class CupySparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     """
-    An wrapper around scipy.sparse to allow sparse arrays to be the chunks in a dask array.
+    An wrapper around cupyx.scipy.sparse to allow sparse arrays to be the chunks in a dask array.
     """
 
     __array_priority__ = 10.0
 
     def __init__(self, value):
-        if not _issparse(value):
-            raise ValueError(f"SparseArray only takes a scipy.sparse or cupyx.scipy.sparse value, but given {type(value)}")
+        if not issparse(value):
+            raise ValueError(f"CupySparseArray only takes a cupyx.scipy.sparse value, but given {type(value)}")
         self.value = value
 
     def __array__(self, dtype=None, **kwargs):
@@ -101,23 +64,23 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
         out = kwargs.get('out', ())
         for x in inputs + out:
             # Only support operations with instances of _HANDLED_TYPES.
-            # Use SparseArray instead of type(self) for isinstance to
+            # Use CupySparseArray instead of type(self) for isinstance to
             # allow subclasses that don't override __array_ufunc__ to
-            # handle SparseArray objects.
-            if not isinstance(x, self._HANDLED_TYPES + (SparseArray,)):
+            # handle CupySparseArray objects.
+            if not isinstance(x, self._HANDLED_TYPES + (CupySparseArray,)):
                 return NotImplemented
 
         # Defer to the implementation of the ufunc on unwrapped values.
-        inputs = tuple(x.value if isinstance(x, SparseArray) else x
+        inputs = tuple(x.value if isinstance(x, CupySparseArray) else x
                        for x in inputs)
         if out:
             kwargs['out'] = tuple(
-                x.value if isinstance(x, SparseArray) else x
+                x.value if isinstance(x, CupySparseArray) else x
                 for x in out)
         # special case multiplication for sparse input, so it is elementwise, not matrix multiplication
-        if ufunc.__name__ == 'multiply' and len(inputs) == 2 and _issparse(inputs[0]) and _issparse(inputs[1]):
+        if ufunc.__name__ == 'multiply' and len(inputs) == 2 and issparse(inputs[0]) and issparse(inputs[1]):
             result = inputs[0].multiply(inputs[1])
-        elif ufunc.__name__ == 'true_divide' and len(inputs) == 2 and _issparse(inputs[0]) and _issparse(inputs[1]):
+        elif ufunc.__name__ == 'true_divide' and len(inputs) == 2 and issparse(inputs[0]) and issparse(inputs[1]):
             result = inputs[0] / inputs[1]
         else:
             result = getattr(ufunc, method)(*inputs, **kwargs)
@@ -161,38 +124,32 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
             item1 = slice(None)
         else:
             item1 = item[1]
-        return SparseArray(self.value.__getitem__((item0, item1)))
+        return CupySparseArray(self.value.__getitem__((item0, item1)))
 
     def _get_value(self, other):
-        # get the value if a SparseArray, or just return other
-        return other.value if isinstance(other, SparseArray) else other
+        # get the value if a CupySparseArray, or just return other
+        return other.value if isinstance(other, CupySparseArray) else other
 
     def __lt__(self, other):
-        return SparseArray(self.value < self._get_value(other))
+        return CupySparseArray(self.value < self._get_value(other))
     def __le__(self, other):
-        return SparseArray(self.value <= self._get_value(other))
+        return CupySparseArray(self.value <= self._get_value(other))
     def __eq__(self, other):
-        return SparseArray(self.value == self._get_value(other))
+        return CupySparseArray(self.value == self._get_value(other))
     def __ne__(self, other):
-        return SparseArray(self.value != self._get_value(other))
+        return CupySparseArray(self.value != self._get_value(other))
     def __gt__(self, other):
-        return SparseArray(self.value > self._get_value(other))
+        return CupySparseArray(self.value > self._get_value(other))
     def __ge__(self, other):
-        return SparseArray(self.value >= self._get_value(other))
-
-    def _is_cupy_sparse(self):
-        return cp is not None and cupyx.scipy.sparse.issparse(self.value)
+        return CupySparseArray(self.value >= self._get_value(other))
 
     def astype(self, dtype, copy=True):
         dtype = dtype if isinstance(dtype, np.dtype) else np.dtype(dtype)
         if copy:
-            return SparseArray(self.value.astype(dtype))
-        elif self._is_cupy_sparse():
+            return CupySparseArray(self.value.astype(dtype))
+        else:
             # cupy sparse doesn't support the copy argument
             self.value = self.value.astype(dtype)
-            return self
-        else:
-            self.value = self.value.astype(dtype, copy=copy)
             return self
 
     mean = _calculation_method('mean')
@@ -203,12 +160,6 @@ class SparseArray(np.lib.mixins.NDArrayOperatorsMixin):
     prod = _calculation_method('prod')
     all = _calculation_method('all')
     any = _calculation_method('any')
-
-    def inplace_row_scale(self, scale):
-        if self._is_cupy_sparse():
-            raise NotImplementedError
-        sparsefuncs.inplace_row_scale(self.value, scale)
-        return self
 
     def asdask(self, chunks):
         import dask.array as da
@@ -256,15 +207,9 @@ def _concatenate(L, axis=0):
     if len(L) == 1:
         return L[0]
     if axis == 0:
-        if issparse(L[0].value): # scipy.sparse but not cupyx.scipy.sparse
-            return SparseArray(scipy.sparse.vstack(tuple([sa.value for sa in L])))
-        else:
-            return SparseArray(_compressed_sparse_stack(tuple([sa.value for sa in L]), 0))
+        return CupySparseArray(_compressed_sparse_stack(tuple([sa.value for sa in L]), 0))
     elif axis == 1:
-        if issparse(L[0].value): # scipy.sparse but not cupyx.scipy.sparse
-            return SparseArray(scipy.sparse.hstack(tuple([sa.value for sa in L])))
-        else:
-            return SparseArray(_compressed_sparse_stack(tuple([sa.value for sa in L]), 1))
+        return CupySparseArray(_compressed_sparse_stack(tuple([sa.value for sa in L]), 1))
     else:
         msg = ("Can only concatenate sparse matrices for axis in "
                "{0, 1}.  Got %s" % axis)
@@ -273,6 +218,6 @@ def _concatenate(L, axis=0):
 # register concatenate if Dask is installed
 try:
     from dask.array.core import concatenate_lookup
-    concatenate_lookup.register(SparseArray, _concatenate)
+    concatenate_lookup.register(CupySparseArray, _concatenate)
 except ImportError:
     pass

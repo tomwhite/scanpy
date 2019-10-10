@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import scipy.sparse
 
-from scanpy.array import sparse_dask, row_scale
+from scanpy.cuarray import sparse_dask
 
 # import cupy if installed
 try:
@@ -77,11 +77,11 @@ class TestCuSparseDaskArray:
     #     x = x / a
     #     assert_allclose(np.asarray(xd), x)
 
-    def test_row_scale(self, x, xd):
-        a = np.array([[1.0], [2.0], [3.0]])
-        xd = row_scale(xd, 1 / a)
-        x = x / a
-        assert_allclose(np.asarray(xd), x)
+    # def test_row_scale(self, x, xd):
+    #     a = np.array([[1.0], [2.0], [3.0]])
+    #     xd = row_scale(xd, 1 / a)
+    #     x = x / a
+    #     assert_allclose(np.asarray(xd), x)
 
     # TODO: implement __eq__ properly?
     # def test_eq(self, x, xd):
