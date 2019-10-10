@@ -5,6 +5,19 @@ import scipy.sparse
 
 from scanpy.array import SparseArray
 
+# Only run cupy tests if installed
+try:
+    import cupyx
+    import cupy as cp
+    TESTS = [
+        "SparseArray",
+        "CupySparseArray",
+    ]
+except ImportError:
+    TESTS = [
+        "SparseArray",
+    ]
+
 class TestSparseArray:
     @pytest.fixture()
     def x(self):
@@ -16,24 +29,28 @@ class TestSparseArray:
             ]
         )
 
-    @pytest.fixture()
-    def xs(self, x):
-        return SparseArray(scipy.sparse.csr_matrix(x))
+    @pytest.fixture(params=TESTS)
+    def xs(self, x, request):
+        if request.param == "SparseArray":
+            yield SparseArray(scipy.sparse.csr_matrix(x))
+        elif request.param == "CupySparseArray":
+            from scanpy.cuarray import CupySparseArray
+            yield CupySparseArray(cupyx.scipy.sparse.csr_matrix(scipy.sparse.csr_matrix(x)))
 
     def test_identity(self, x, xs):
         assert_allclose(np.asarray(xs), x)
 
     def test_astype(self, x, xs):
-        xs = xs.astype(int)
-        x = x.astype(int)
+        xs = xs.astype(np.float32)
+        x = x.astype(np.float32)
         assert xs.dtype == x.dtype
         assert_allclose(np.asarray(xs), x)
 
     def test_astype_inplace(self, x, xs):
         original_id = id(xs)
-        xs = xs.astype(int, copy=False)
+        xs = xs.astype(np.float32, copy=False)
         assert original_id == id(xs)
-        x = x.astype(int, copy=False)
+        x = x.astype(np.float32, copy=False)
         assert xs.dtype == x.dtype
         assert_allclose(np.asarray(xs), x)
 
