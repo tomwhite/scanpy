@@ -15,7 +15,7 @@ def row_scale(sparse_dask_array, scale):
         if isinstance(X, SparseArray):
             return X.inplace_row_scale(scale[loc[0]:loc[1]])
         else:
-            return X / scale[loc[0]:loc[1]]
+            return X / scale[loc[0]:loc[1]][:, np.newaxis]
     return sparse_dask_array.map_blocks(row_scale_block, dtype=sparse_dask_array.dtype)
 
 def _convert_to_numpy_array(arr, dtype=None):
