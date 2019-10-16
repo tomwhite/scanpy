@@ -26,7 +26,7 @@ def time_numpy():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 50000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] / 2)
     Y = normalize(Y)
     Y = log1p(Y)
     Y = scale(Y)
@@ -44,7 +44,7 @@ def time_dask():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 50000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] / 2)
     Y = normalize(Y)
     Y = log1p(Y)
     Y = scale(Y)
@@ -65,7 +65,7 @@ def time_dask_cupy():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 50000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] / 2)
     Y = normalize(Y)
     Y = log1p(Y)
     Y = scale(Y)
@@ -83,7 +83,7 @@ def time_sparse():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] * 0.10 / 2)
     Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
@@ -101,7 +101,7 @@ def time_sparse_dask():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] * 0.10 / 2)
     Y = normalize(Y)
     Y = log1p(Y)
     Y = densify(Y)
@@ -126,7 +126,7 @@ def time_pydata_sparse_dask():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000)
+    Y, number_per_gene = filter_genes(X, X.shape[0] * 0.10 / 2)
     da.compute(Y, number_per_gene)
     t2 = time.time()
     print("time to run recipe: ", t2-t1)
