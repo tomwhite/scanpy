@@ -100,5 +100,12 @@ def _get_mean_var(X):
     var = (mean_sq - mean ** 2) * (X.shape[0] / (X.shape[0] - 1))
     return mean, var
 
-def recipe_zheng17(X):
-    pass
+def recipe_zheng17(X, n_top_genes=1000):
+    X, number_per_gene = filter_genes(X, 1)
+    X = normalize(X)
+    X = filter_genes_dispersion(X, n_top_genes=n_top_genes)
+    X = normalize(X)
+    X = log1p(X)
+    X = densify(X)
+    X = scale(X)
+    return X

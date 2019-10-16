@@ -6,7 +6,7 @@ import dask.array as da
 import dask.array.random
 import scanpy as sc
 from scanpy.sparsearray import sparse_dask
-from scanpy.preprocessing._dask_optimized import filter_genes, filter_genes_dispersion, normalize, log1p, densify, scale
+from scanpy.preprocessing._dask_optimized import filter_genes, filter_genes_dispersion, normalize, log1p, densify, scale, recipe_zheng17
 
 np.random.seed(42)
 
@@ -32,7 +32,7 @@ def time_numpy():
     Y = scale(Y)
     Y = Y.sum() # call sum so we don't have to allocate output
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_dask():
     print("time_dask")
@@ -51,7 +51,7 @@ def time_dask():
     Y = Y.sum() # call sum so we don't have to allocate output
     da.compute(Y, number_per_gene)
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_dask_cupy():
     print("time_dask_cupy")
@@ -72,7 +72,7 @@ def time_dask_cupy():
     Y = Y.sum() # call sum so we don't have to allocate output
     da.compute(Y, number_per_gene)
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_sparse():
     print("time_sparse")
@@ -89,7 +89,7 @@ def time_sparse():
     Y = densify(Y)
     Y = scale(Y)
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_sparse_dask():
     print("time_sparse_dask")
@@ -109,7 +109,7 @@ def time_sparse_dask():
     da.compute(Y, number_per_gene)
     #Y.visualize(filename='sparse_dask.svg')
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_pydata_sparse_dask():
     print("time_pydata_sparse_dask")
@@ -129,7 +129,7 @@ def time_pydata_sparse_dask():
     Y, number_per_gene = filter_genes(X, 5000)
     da.compute(Y, number_per_gene)
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_sparse_real():
     print("time_sparse_real")
@@ -139,15 +139,9 @@ def time_sparse_real():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000)
-    Y = normalize(Y)
-    Y = filter_genes_dispersion(Y, n_top_genes=1000)
-    Y = normalize(Y)
-    Y = log1p(Y)
-    Y = densify(Y)
-    Y = scale(Y)
+    Y = recipe_zheng17(X)
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def time_sparse_dask_real():
     print("time_sparse_dask_real")
@@ -158,18 +152,11 @@ def time_sparse_dask_real():
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y, number_per_gene = filter_genes(X, 5000)
-    #Y = Y.map_blocks(report_block_info, dtype=Y.dtype)
-    Y = normalize(Y)
-    Y = filter_genes_dispersion(Y, n_top_genes=1000)
-    Y = normalize(Y)
-    Y = log1p(Y)
-    Y = densify(Y)
-    Y = scale(Y)
-    da.compute(Y, number_per_gene)
+    Y = recipe_zheng17(X)
+    da.compute(Y)
     #Y.visualize(filename='sparse_dask.svg')
     t2 = time.time()
-    print("time to call filter_genes: ", t2-t1)
+    print("time to run recipe: ", t2-t1)
 
 def sparse_comparison():
     print("sparse_comparison")
@@ -224,8 +211,8 @@ if __name__ == '__main__':
     # time_dask: 8.4s to create matrix, 4.6s to run recipe
     # So we see that Dask can take advantage of cores to do the processing faster.
 
-    time_numpy()
-    time_dask()
+    #time_numpy()
+    #time_dask()
     #time_dask_cupy()
 
     # Compare sparse matrices. We start with sparse matrices, but then convert to
@@ -237,8 +224,8 @@ if __name__ == '__main__':
     # time_sparse_dask: 29s to create matrix, 4.3s to run recipe
     # So we see that Dask again can take advantage of cores (but not as much?)
 
-    time_sparse()
-    time_sparse_dask()
+    #time_sparse()
+    #time_sparse_dask()
     #time_pydata_sparse_dask()
 
     # Use real data.
