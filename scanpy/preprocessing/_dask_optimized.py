@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import issparse
 from sklearn.utils import sparsefuncs
 
+from anndata import AnnData
 import dask.array as da
 from scanpy.sparsearray import sparse_dask, row_scale
 import warnings
@@ -21,7 +22,7 @@ def filter_genes(X, min_number):
     gene_subset = number_per_gene >= min_number
     s = np.sum(~gene_subset)
     Y = X[:,gene_subset]
-    return Y, number_per_gene # note we are returning "side data"
+    return Y, number_per_gene, gene_subset
 
 def filter_genes_dispersion(X, n_top_genes):
     # we need to materialize the mean and var since we use pandas to do computations on them
@@ -53,11 +54,12 @@ def filter_genes_dispersion(X, n_top_genes):
     disp_cut_off = dispersion_norm[n_top_genes-1]
     gene_subset = df['dispersion_norm'].values >= disp_cut_off
 
-    return X[:,gene_subset]
+    return X[:,gene_subset], gene_subset
 
 def normalize(X):
     counts_per_cell = X.sum(1)
     counts = np.ravel(counts_per_cell)
+    n_counts_all = counts.copy()
     after = np.median(counts[counts>0])
     counts += (counts == 0)
     counts /= after
@@ -67,7 +69,7 @@ def normalize(X):
         X = row_scale(X, 1/counts)
     else:
         X /= counts[:, None]
-    return X
+    return X, n_counts_all
 
 def log1p(X):
     # TODO: try using out=X
@@ -101,11 +103,27 @@ def _get_mean_var(X):
     return mean, var
 
 def recipe_zheng17(X, n_top_genes=1000):
-    X, number_per_gene = filter_genes(X, 1)
-    X = normalize(X)
-    X = filter_genes_dispersion(X, n_top_genes=n_top_genes)
-    X = normalize(X)
+    X, number_per_gene, gene_subset1 = filter_genes(X, 1)
+    X, n_counts_all = normalize(X)
+    X, gene_subset2 = filter_genes_dispersion(X, n_top_genes=n_top_genes)
+    X, _ = normalize(X)
     X = log1p(X)
     X = densify(X)
     X = scale(X)
-    return X
+    return X, gene_subset1, gene_subset2, number_per_gene, n_counts_all
+
+def recipe_zheng17_anndata(adata, n_top_genes=1000):
+    X, gene_subset1, gene_subset2, number_per_gene, n_counts_all = materialize_as_ndarray(recipe_zheng17(adata.X, n_top_genes))
+
+    # copy metadata
+    obs = adata.obs.copy()
+    var = adata.var.copy()
+    var = var[gene_subset1][gene_subset2] # subset genes
+    uns = adata.uns.copy()
+
+    # add new metadata
+    obs['n_counts_all'] = n_counts_all
+    n_counts = number_per_gene[gene_subset1][gene_subset2]
+    var['n_counts'] = n_counts
+
+    return AnnData(X, obs, var, uns)

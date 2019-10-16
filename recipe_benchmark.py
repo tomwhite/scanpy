@@ -6,7 +6,7 @@ import dask.array as da
 import dask.array.random
 import scanpy as sc
 from scanpy.sparsearray import sparse_dask
-from scanpy.preprocessing._dask_optimized import filter_genes, filter_genes_dispersion, normalize, log1p, densify, scale, recipe_zheng17
+from scanpy.preprocessing._dask_optimized import filter_genes, filter_genes_dispersion, normalize, log1p, densify, scale, recipe_zheng17_anndata
 
 np.random.seed(42)
 
@@ -147,11 +147,11 @@ def time_sparse_real():
     print("time_sparse_real")
 
     t0 = time.time()
-    X = load_data().X
+    adata = load_data()
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y = recipe_zheng17(X)
+    recipe_zheng17_anndata(adata)
     t2 = time.time()
     print("time to run recipe: ", t2-t1)
 
@@ -159,13 +159,12 @@ def time_sparse_dask_real():
     print("time_sparse_dask_real")
 
     t0 = time.time()
-    X = load_data().X
-    X = sparse_dask(X, chunks=(10000, X.shape[1]))
+    adata = load_data()
+    adata.X = sparse_dask(adata.X, chunks=(10000, adata.X.shape[1]))
     t1 = time.time()
     print("time to create matrix: ", t1-t0)
 
-    Y = recipe_zheng17(X)
-    da.compute(Y)
+    recipe_zheng17_anndata(adata)
     #Y.visualize(filename='sparse_dask.svg')
     t2 = time.time()
     print("time to run recipe: ", t2-t1)
