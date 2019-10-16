@@ -131,6 +131,18 @@ def time_pydata_sparse_dask():
     t2 = time.time()
     print("time to run recipe: ", t2-t1)
 
+def time_sparse_original_real():
+    print("time_sparse_original_real")
+
+    t0 = time.time()
+    adata = load_data()
+    t1 = time.time()
+    print("time to create matrix: ", t1-t0)
+
+    sc.pp.recipe_zheng17(adata)
+    t2 = time.time()
+    print("time to run recipe: ", t2-t1)
+
 def time_sparse_real():
     print("time_sparse_real")
 
@@ -231,6 +243,7 @@ if __name__ == '__main__':
     # Use real data.
     # On a 64 core machine, time_sparse_real 5.3s, time_sparse_dask_real 3.0s
     # Using the 1M cell dataset: time_sparse_real 334s, time_sparse_dask_real 138s, a 2.4x speedup
+    time_sparse_original_real()
     time_sparse_real()
     time_sparse_dask_real()
 
